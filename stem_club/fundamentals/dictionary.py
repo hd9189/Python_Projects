@@ -45,7 +45,8 @@ for x, y in thisdict.items():
     print(x, y)
 
 # points towards dictionary
-new_car_dict = thisdict# creates actual dictionary
+new_car_dict = thisdict
+# creates actual dictionary
 car_dict = thisdict.copy()
 print(car_dict)
 
