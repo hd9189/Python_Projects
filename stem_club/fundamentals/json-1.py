@@ -92,4 +92,7 @@ with open("data.json","w") as w_file:
 with open("data.json", "r") as r_file:
     data = json.load(r_file)
 
-print(data["summary"][0]["active_cases"]+": ")
+for dict in data["summary"]:
+    print()
+    for key,term in dict.items():
+        print(key+": "+str(term))
