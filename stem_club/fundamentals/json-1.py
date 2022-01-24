@@ -80,7 +80,7 @@ print(data[0]["age"])'''
     ]
 }'''
 
-#the same as text file
+
 '''with open("data.json","w") as w_file:
     json.dump(data, w_file)'''
 
@@ -95,4 +95,6 @@ with open("data.json", "r") as r_file:
 for dict in data["summary"]:
     print()
     for key,term in dict.items():
-        print(key+": "+str(term))
+        if isinstance(term, float) or isinstance(term, int): print(key+": "+ f"{term:,}")
+
+        else: print(key+": "+ str(term))
