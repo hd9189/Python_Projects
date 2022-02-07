@@ -1,33 +1,45 @@
-#unfinished
 start = list(input())
-start.remove(":")
-start_a = [int(x) for x in start]
-start_a[0] = [start_a[0]*10, start_a[1]]
-start_a.pop(1)
-start_a[1] = [start_a[1]*10, start_a[2]]
-start_a.pop(2)
+hour = [int(x) for x in start[:2]]
+minute = [int(x) for x in start[3:]]
+start = [hour, minute]
+count = 0 
+rush_hr = [7, 8, 9, 15, 16, 17, 18]
 
-count = 0
-while count <200:
-    while start_a[1][0] != 0:
-        if sum(start_a[0]) in range(7,11) or sum(start_a[0]) in range(5,20):
-            count += 10
-            start_a[1][0] += 20
-            if start_a[1][0] == 60:
-                start_a[1][0] =0
-                start_a[0][1] += 1
-                if start_a[0][1] == 10:
-                    start_a[0][1] =0
-                    start_a[0][0] +=1
+def rush_hour():
+    global count, start
+    while ((start[0][0]*10 + start[0][1] in rush_hr) and (count < 120)):
+        start[1][0] +=2
+        count += 10
+        if start[1][0] == 6:
+            start[1][0] == 0
+            start[0][1] += 1
+            if start[0][1] ==10:
+                start[0][1] ==0
+                start[0][0] +=1
 
-        if sum(start_a[0]) not in range(7,11) or sum(start_a[0]) not in range(5,20):
-            count += 10
-            start_a[1][0] += 10
-            if start_a[1][0] == 60:
-                start_a[1][0] =0
-                start_a[0][1] += 1
-                if start_a[0][1] == 10:
-                    start_a[0][1] =0
-                    start_a[0][0] +=1
-print(start_a)
-    
+def non_hour():
+    global count, start
+    while ((start[0][0]*10 + start[0][1] not in rush_hr) and (count < 120)):
+        start[1][0] +=1
+        count += 10
+        if start[1][0] == 6:
+            start[1][0] == 0
+            start[0][1] += 1
+            if start[0][1] ==10:
+                start[0][1] ==0
+                start[0][0] +=1
+            if start[0][0]*10 + start[0][1] == 24:
+                start[0][0] = 0
+                start[0][1] = 0
+
+if start[0][0]*10 + start[0][1] in rush_hr:
+    rush_hour()
+    if count < 120:
+        non_hour()
+
+elif start[0][0]*10 + start[0][1] not in rush_hr:
+    non_hour()
+    if count < 120:
+        rush_hour()
+
+print(f"{start[0][0]}{start[0][1]}:{start[1][0]}{0}")
