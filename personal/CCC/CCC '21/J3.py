@@ -1,4 +1,4 @@
-numbers = []
+'''numbers = []
 while True:
     number = input()
     if number == "99999":
@@ -21,4 +21,19 @@ for number in numbers:
     else:
         direction = "left"
         print(direction, end = " ")
-        print(steps)
+        print(steps)'''
+
+prev = ""
+while True:
+    instruction = input()
+    a = int(instruction[0]) + int(instruction[1])
+    if instruction == "9"*5:
+        break
+    elif a ==0:
+        direct = prev
+    elif a %2 == 0:
+        direct = "right"
+    elif a %2 ==1:
+        direct = "left"
+    print(direct + " " +instruction[2:])
+    prev = direct

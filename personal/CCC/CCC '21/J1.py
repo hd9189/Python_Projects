@@ -1,9 +1,9 @@
-winner = ""
-big = 0
-for x in range(int(input())):
-    person = input()
-    amount = int(input())
-    if amount > big:
-        big = amount
-        winner = person
-print(winner)
+b = int(input())
+p = 5*b-400
+print(p)
+if p == 100:
+    print(0)
+elif p < 100:
+    print(1)
+else:
+    print(-1)
