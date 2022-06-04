@@ -13,30 +13,24 @@ import random
 from classes import player
 from classes import bullet_group
 from classes import asteroid_obj
+from screens import WIDTH, HEIGHT, FPS
+from screens import home
 #-------------------------------------------------
 #defining constant values that won't be changed
 #-------------------------------------------------
 
-#initialize font
-pygame.font.init()
-#initialize sounds in pygame
-pygame.mixer.init()
-
-#defining the fpsm
-FPS = 60
-
-#defining the width and height of the window
-WIDTH, HEIGHT = 1000, 750
+#initialize all pygame modules
+pygame.init()
 
 #constant values of spaceship size
 SPACESHIP_WIDTH, SPACESHIP_HEIGHT = 55, 45
 #-------------------------------------------------
 #setting the screen
 #-------------------------------------------------
+
 WINDOW = pygame.display.set_mode((WIDTH, HEIGHT))
 #setting the window title
-pygame.display.set_caption("Asteroid Smash!")
-
+pygame.display.set_caption("Entangled")
 
 #-------------------------------------------------
 #loading images from folder
@@ -75,6 +69,7 @@ PLAYER_HIT_PLAYER_SOUND.set_volume(0.3)
 #fonts
 HEALTH_FONT = pygame.font.SysFont("comicsans", 20)
 WIN_FONT = pygame.font.SysFont("comicsans", 100)
+TIME_FONT = pygame.font.SysFont("arial", 30)
 
 #positions for player
 TEXT_POSITION = [(10, 10), (WIDTH - 86 - 10, 10), (10, HEIGHT- 28 -10), (WIDTH - 86-10, HEIGHT - 28-10)] #order is in player 1,2,3,4
@@ -95,9 +90,10 @@ PLAYER2_CONTROLS = [pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN, p
 #-------------------------------------------------
 #creating player
 #-------------------------------------------------
+player_pos = [(WIDTH//4, HEIGHT//2), (WIDTH//4*3, HEIGHT//2)]
 player_list = [
-  player((WIDTH//4, HEIGHT//2), RED_SPACESHIP, RED, PLAYER1_CONTROLS, BULLET_FIRE_SOUND),
-  player((WIDTH//4*3, HEIGHT//2), YELLOW_SPACESHIP, YELLOW, PLAYER2_CONTROLS, BULLET_FIRE_SOUND)
+  player(player_pos[0], RED_SPACESHIP, RED, PLAYER1_CONTROLS, BULLET_FIRE_SOUND),
+  player(player_pos[1], YELLOW_SPACESHIP, YELLOW, PLAYER2_CONTROLS, BULLET_FIRE_SOUND)
 ]
 
 
@@ -147,22 +143,41 @@ def player_collision_check(player, bullet, asteroid):
     points_deducted: int value where it returns 3 points for everytime the player hits the other player
   '''
   collision_a = pygame.sprite.spritecollide(player, asteroid, True)
-  collision_b = pygame.sprite.spritecollide(player, bullet, True)
+  collision_b = pygame.sprite.spritecollide(player, bullet, False)
+
+  not_my_bullets = []
+  for bu in collision_b:
+    if bu not in player.bullets:
+      not_my_bullets.append(bu)
+      bullet_group.remove(bu)
+      for p in player_list:
+        if bu in p.bullets:
+          p.bullets.remove(bu)
+  
   if not player.immor and len(collision_a) !=0:
-    player.lives -= len(collision_a)
-    #player.immor = True
+    player.lives -= 1
     ASTEROID_HIT_PLAYER_SOUND.play()
+    if player.lives != 0:
+      player.immor = True
+      player.immor_count += 1
+    else:
+      player.die_respawn()
     a = collision_a[0] #collision is a lsit
     if a.rank > 1:
       a.destroy_respawn(a, WIDTH, HEIGHT, ASTEROID, asteroids)
     return 1 #1 point deducted for every asteriod hit
-  elif not player.immor and len(collision_b) !=0:
+
+  elif not player.immor and len(not_my_bullets) !=0:
     PLAYER_HIT_PLAYER_SOUND.play()
-    player.lives -= len(collision_b)
-    player.immor == True
+    player.lives -= 1
+    if player.lives !=0:
+      player.immor = True
+      player.immor_count += 1
+    else:
+      player.die_respawn()
     for p in player_list:
-      if collision_b[0] in p.bullets:
-        p.bullets.remove(collision_b[0])
+      if not_my_bullets[0] in p.bullets:
+        p.bullets.remove(not_my_bullets[0])
         break
 
     return 3 #3 deducted for every collision with bullet
@@ -189,28 +204,22 @@ def draw_window():
       asteroids.remove(a)
 
 
-def main():
+def play():
   '''
-  main function that runs the game
-
-  Parameters:m
+  function that runs the game
+  
+  parameters:
     None
-
+  
   Returns:
     None
   '''
-
-
-
-  run = True
   clock = pygame.time.Clock()
   time = 0 
-  while run:
-    if time > 180000: #3 minutesv
-      run = False
+  while time <= 18000:
     #makes the game run at the FPS rate
     clock.tick(FPS)
-    time +=1
+    time = pygame.time.get_ticks()
     if time %30 == 0:
       ran = random.choice([1,1,1,2,2,3])
       asteroids.add(asteroid_obj(ran, WIDTH, HEIGHT, ASTEROID))
@@ -236,36 +245,78 @@ def main():
 
     #loops through all the events that happen in the game
     for event in pygame.event.get():
+      print(event)
+      
       #if the even that the for loop received type is the same as the quit event
       if event.type == pygame.QUIT:
         #stops while loop
-        run = False
-
-    #draws the window again every time
-    time = pygame.time.get_ticks()
+        break
 
     draw_window()
+    if len(str(time)) == 4: t = str(time)[0]
+    elif len(str(time)) < 4: t = "0"
+    else: t = str(time)[:2]
+    time_text = TIME_FONT.render(str(182-int(t))+ " seconds left", 1, WHITE)
+    WINDOW.blit(time_text, ((WIDTH//2)-(time_text.get_width()//2), 10))
     for p in range(len(player_list)):
-      player_list[p].draw(WINDOW, WIDTH, HEIGHT)
-      player_list[p].update_location(WIDTH, HEIGHT)
+      ps = player_list[p]
+      ps.draw(WINDOW, WIDTH, HEIGHT)
+      ps.update_location(WIDTH, HEIGHT)
       # player1.draw(WINDOW, WIDTH, HEIGHT)
       # player1.update_location(WIDTH, HEIGHT)
       # player2.draw(WINDOW, WIDTH, HEIGHT)
       # player2.update_location(WIDTH, HEIGHT)
-      player_health = HEALTH_FONT.render("Health: " + str(player_list[p].lives), 1, WHITE)
-      player_points = HEALTH_FONT.render("Points: " + str(player_list[p].points),1, WHITE)
+      player_health = HEALTH_FONT.render("Health: " + str(ps.lives), 1, ps.colour)
+      player_points = HEALTH_FONT.render("Points: " + str(ps.points),1, ps.colour)
       WINDOW.blit(player_health, TEXT_POSITION[p])
       WINDOW.blit(player_points, (TEXT_POSITION[p][0], TEXT_POSITION[p][1]+30))
+      if ps.immor_count != 0:
+        ps.immor_check()
 
     #update the display every loop
     pygame.display.update()
-    # print(time)
+
   #quits and stops the entire game
   pygame.quit()
+
+
+def main():
+  '''
+  main function that runs the game
+
+  Parameters:m
+    None
+
+  Returns:
+    None
+  '''
+  #-------------------------------------------------
+  #Setting screen variable
+  #1: home screen
+  #2: how to play screen
+  #3: play screen
+  #-------------------------------------------------
+  screen = 1
+  while True:
+    if screen == 1:
+      screen = home(WINDOW)
+    elif screen == 2:
+      pass
+    elif screen == 3:
+      play()
+    elif screen == 0:
+      pygame.quit()
 
 #runs the main function only if this main file is being run
 if __name__ == '__main__':
   main()
 
-  #PROBLEMS:
-  #bullets are colliding with the player itself, create copy of bullet group and remove all the players own bullets
+#to do list:
+# immortal of being player, switch colours/state
+# death function, brief pause after death
+# home screen, add quit game button
+# how to play screen
+# change colours function
+# input function
+# power ups function
+# make small asteroid explode anmimation

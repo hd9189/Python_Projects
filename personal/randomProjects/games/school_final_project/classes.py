@@ -49,6 +49,7 @@ class player():
     self.height = self.image.get_height()
     self.x_pos = pos[0]
     self.y_pos = pos[1]
+    self.init_pos = (pos[0], pos[1])
     #0: left, 1: right, 2: up, 3: down
     self.controls = controls
     self.angle = 0
@@ -64,8 +65,9 @@ class player():
     self.bullets = pygame.sprite.Group()
     self.last_fired = 0
     self.points = 0
-    self.lives = 3
+    self.lives = 5
     self.immor = False
+    self.immor_count = 0
     self.fire_sound = fire_sound
 
 
@@ -220,8 +222,20 @@ class player():
     if self.y_pos > HEIGHT: self.y_pos = 1
     elif self.y_pos < 0: self.y_pos = HEIGHT-1
 
+  def immor_check(self):
+    if self.immor_count > 300: #3 seconds
+      self.immor = False
+      self.immor_count = 0
+    else:
+      self.immor_count += 1
+
   def die_respawn(self):
-    pass
+    self.immor = True
+    self.immor_count = 1
+    self.x_pos = self.init_pos[0]
+    self.y_pos = self.init_pos[1]
+    self.angle = 0
+    self.lives = 5
 
 
 class bullet(pygame.sprite.Sprite):
@@ -422,5 +436,5 @@ class asteroid_obj(pygame.sprite.Sprite):
     for x in range(ran):
       new_asteroid = asteroid_obj(a.rank-1, WIDTH, HEIGHT, ASTEROID)
       new_asteroid.x_pos = a.x_pos
-      new_asteroid.y_pos = a.y_pos
+      new_asteroid.y_pos = a.y_pos 
       asteroids.add(new_asteroid)
