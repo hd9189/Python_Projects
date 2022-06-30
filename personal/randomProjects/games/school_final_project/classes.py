@@ -1,8 +1,15 @@
 import pygame
 import math
 import random
+import os
 
 bullet_group = pygame.sprite.Group()
+explosion_img = pygame.transform.scale(pygame.image.load(
+    os.path.join('Assets', 'explosion.png')), (25,25))
+power_img = pygame.transform.scale(pygame.image.load(
+    os.path.join('Assets', 'power_up.png')), (25,50))
+  
+explosions_q = []
 #-------------------------------------------------
 #class for the player
 #-------------------------------------------------
@@ -30,6 +37,10 @@ class player():
     last_fired: int value acting as a interval tracker to limit bullet spamming
     lives: int value representing number of lives left till dying
     immortal: bool value indicating if the user is currently immortal (meaning that nothing will take a life)
+    fire_sound: file from assets folder
+    bullet_interval: interval in which bullets can be fired
+    rapid_fire: bool value to indicate the state of player, if they are power up or not
+    power_up_time: int value indicating the time when the player just got the power up
   '''
   #set the variables and attributes for the user
   def __init__ (self, pos, player_img, colour, controls, fire_sound):
@@ -69,6 +80,9 @@ class player():
     self.immor = False
     self.immor_count = 0
     self.fire_sound = fire_sound
+    self.bullet_interval = 120
+    self.rapid_fire = False
+    self.power_up_time = 0
 
 
   #function to help put the 
@@ -86,8 +100,13 @@ class player():
       None
     '''
     WINDOW.blit(self.rotate_surf, self.rect)
-    pygame.draw.rect(WINDOW, (255,0,0), self.rect, 2)
-    #draws the bullets
+    if self.immor:
+      #draws rect around user if immortal
+      pygame.draw.rect(WINDOW, self.colour, self.rect, 2)
+    if self.rapid_fire:
+      #draws a circle around user to indicate power up
+      pygame.draw.circle(WINDOW, (0,255,0), self.rect.center, 50, width=2)
+    #iterates through the players bullets and draws them
     for bullet in self.bullets:
       bullet.move()
       bullet.draw(WINDOW)
@@ -124,7 +143,9 @@ class player():
       None
     '''
     self.angle -= 5
+    #rotate the image
     self.rotate_surf = pygame.transform.rotate(self.image, self.angle)
+    #roate rect
     self.rect = self.rotate_surf.get_rect()
     self.rect.center = (self.x_pos, self.y_pos)
     #get direction of where the player is facing
@@ -186,6 +207,7 @@ class player():
     Returns:
       None
     '''
+    #runs functions depending on what keys are pressed
     if keys_pressed[self.controls[0]]:
       self.turnLeft()
     if keys_pressed[self.controls[1]]:
@@ -196,7 +218,7 @@ class player():
       self.moveBackward()
     if keys_pressed[self.controls[4]]:
       #use bruteforce to create a time interval between when bullets can be created
-      if time-self.last_fired >=120:
+      if time-self.last_fired >=self.bullet_interval:
         new_bullet = bullet(self, WINDOW)
         self.fire_sound.play()
         new_bullet.draw(WINDOW)
@@ -216,26 +238,47 @@ class player():
     Returns:
       None
     '''
+    #lets user not run out of the screen
     if self.x_pos > WIDTH: self.x_pos = 1
     #use elif to skip additional checking
     elif self.x_pos < 0: self.x_pos = WIDTH-1
     if self.y_pos > HEIGHT: self.y_pos = 1
     elif self.y_pos < 0: self.y_pos = HEIGHT-1
 
-  def immor_check(self):
-    if self.immor_count > 300: #3 seconds
+  def immor_check(self,current_time):
+    '''
+    checks if the player should still be immortal
+
+    Parameters:
+      self: object
+      current_time: int value of time in game
+    '''
+    #checks how long the player has been immortal
+    if current_time - self.immor_count > 2000: #2 seconds
       self.immor = False
       self.immor_count = 0
-    else:
-      self.immor_count += 1
 
-  def die_respawn(self):
+  def die_respawn(self, time):
+    '''
+    kills player and relocates them after they lose all health
+
+    parameters:
+      self: object
+      time: current time in game
+    '''
+    #resets position of user and all status
     self.immor = True
-    self.immor_count = 1
+    self.immor_count = time
     self.x_pos = self.init_pos[0]
     self.y_pos = self.init_pos[1]
     self.angle = 0
     self.lives = 5
+
+  def power_up_timer(self, time):
+    #finds time on how long the player had the power up
+    if time - self.power_up_time > 5000:
+      self.bullet_interval = 120
+      self.rapid_fire = False
 
 
 class bullet(pygame.sprite.Sprite):
@@ -304,6 +347,7 @@ class bullet(pygame.sprite.Sprite):
     returns:
       None
     '''
+    #draws bullet
     self.rect = pygame.draw.rect(WINDOW, self.colour, [self.x, self.y, self.w, self.h])
 
   def check_off_screen(self, WIDTH, HEIGHT):
@@ -314,6 +358,7 @@ class bullet(pygame.sprite.Sprite):
       WIDTH: width of window
       HEIGHT: height of window
     '''
+    #checks if bullet is off screen
     if self.x < -1 or self.x > WIDTH or self.y <-1 or self.y > HEIGHT:
       return True
 
@@ -346,6 +391,7 @@ class asteroid_obj(pygame.sprite.Sprite):
     '''
     pygame.sprite.Sprite.__init__(self)
     self.rank = rank
+    #decides image size depending on rank
     if self.rank == 1: self.height, self.width = (25,25) #small size
     elif self.rank == 2: self.height, self.width = (50,50) #medium size
     elif self.rank == 3: self.height, self.width = (75,75) #large size
@@ -365,9 +411,6 @@ class asteroid_obj(pygame.sprite.Sprite):
     #velocity of asteroid in x and y
     self.x_vel = self.x_dir*random.randrange(1,3)
     self.y_vel = self.y_dir*random.randrange(1,3)
-    #self.hit_box_range = (self.x_pos, self.y_pos, self.width, self.height) #hit box rectangle position and dimension
-    #self.rect = pygame.draw.rect(WINDOW, (255,0,0), self.hit_box_range, 2) #hit box
-    #self.angle = 0
     self.rect = pygame.Rect((self.x_pos, self.y_pos), (self.width, self.height))
 
   def movement(self):
@@ -380,13 +423,12 @@ class asteroid_obj(pygame.sprite.Sprite):
     Returns:
       None
     '''
-    #self.angle += 5
-    #self.img = pygame.transform.rotate(self.img, self.angle)
+
     self.x_pos += self.x_vel
     self.y_pos += self.y_vel
-    # self.hit_box_range = (self.x_pos, self.y_pos, self.width, self.height)
-    #self.rect = pygame.draw.rect(WINDOW, (255,0,0), self.hit_box_range, 2) #hitbox
+    #self.rect is attribute needed for collision function
     self.rect = self.img.get_rect()
+    #asteroid hitbox
     self.rect = pygame.Rect((self.x_pos, self.y_pos), (self.width, self.height))
     
 
@@ -402,7 +444,6 @@ class asteroid_obj(pygame.sprite.Sprite):
       None
     '''
     WINDOW.blit(self.img, (self.x_pos, self.y_pos))
-    #pygame.draw.rect(WINDOW, (255,0,0), self.hit_box_range, 2) #hitbox
   
   def check_off_screen(self, WIDTH, HEIGHT):
     '''
@@ -414,7 +455,8 @@ class asteroid_obj(pygame.sprite.Sprite):
       HEIGHT: width height
     
     Returns:
-      destroy: bool'''
+      destroy: bool
+    '''
     if self.x_pos < -70 or self.x_pos > WIDTH+4 or self.y_pos <-70 or self.y_pos > HEIGHT+4:
       return True
 
@@ -438,3 +480,97 @@ class asteroid_obj(pygame.sprite.Sprite):
       new_asteroid.x_pos = a.x_pos
       new_asteroid.y_pos = a.y_pos 
       asteroids.add(new_asteroid)
+
+class explosion():
+  '''
+  class to define the explosion of asteroids after being destroyed
+
+  Attributes:
+  img: a file from assets
+  pos: a tuple of the position of asteroid when destroyed
+  '''
+  def __init__ (self,x,y):
+    '''
+    Parameters:
+      self: the object
+      x: int value of x position
+      y: int value of y position
+    
+    Returns:
+      None
+    '''
+    self.img = explosion_img
+    #position of asteroid
+    self.pos = (x,y)
+  def draw(self, WINDOW):
+      '''
+      Draws the explosion image at the position on window
+      Parameters
+        self: object
+        WINDOW: the window of the game
+
+      '''
+      WINDOW.blit(self.img, self.pos)
+  def enter_q(self, time):
+    '''
+    Function that enters the explosion and time of explosion to a queue (list)
+
+    Parameters:
+      self: object
+      time: int
+    Returns:
+      none
+    '''
+    #enters list and once it reaches the 3 second time limit it is removed from queue
+    explosions_q.append((self, time))
+
+class power_up(pygame.sprite.Sprite):
+  '''
+  class to create power up images in game
+
+  Attributes:
+    x: random int value
+    y: random int value
+    W: int width of rect
+    H: int width of rect
+    duration: int value to indicate how long the bullet should stay for
+    img: image
+    rect: pygame rect
+    time: int value of time
+  '''
+
+  def __init__(self, time):
+    '''
+    initialize the sprite
+
+    Parameters:
+      self: object
+      time: int value
+
+    Returns:
+      None
+    '''
+    pygame.sprite.Sprite.__init__(self)
+
+    self.x = random.randrange(10, 990)
+    self.y = random.randrange(10, 740)
+    self.W = 15
+    self.H = 30
+    self.duration = 5
+    self.img = power_img
+    self.rect = pygame.Rect((self.x, self.y), (self.W, self.H))
+    self.time = time
+
+  def draw(self, WINDOW):
+    '''
+    draws the image at a random spot
+    
+    Parameters:
+      self: object
+      WINDOW: pygame window
+
+    Returns:
+      None
+    '''
+    #draws image
+    WINDOW.blit(self.img, (self.x, self.y))
